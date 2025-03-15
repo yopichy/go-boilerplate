@@ -1,0 +1,24 @@
+server:
+  port: 8001
+
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  database: webapi
+  username: postgres
+  password: P@ssw0rd
+
+auth:
+  jwtSecret: "your-super-secret-key-that-should-be-very-long-and-secure"
+
+logging:
+  filePath: ./logs/app.log
+  elasticsearchURL: http://localhost:9200
+  elasticsearchIndex: app-logs
+
+oauth2:
+  authServerURL: "http://localhost:8000"
+  clientID: "webapi-client"
+  clientSecret: "webapi-secret"
+  redirectURL: "http://localhost:8001/callback"

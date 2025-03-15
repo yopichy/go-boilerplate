@@ -1,0 +1,133 @@
+basePath: /
+definitions:
+  models.WeatherInfo:
+    properties:
+      condition:
+        type: string
+      location:
+        type: string
+      temperature:
+        type: number
+    type: object
+host: localhost:8001
+info:
+  contact: {}
+  description: A Web API boilerplate with authentication and multitenancy
+  title: Web API Boilerplate
+  version: "1.0"
+paths:
+  /api/weather:
+    get:
+      consumes:
+      - application/json
+      description: Get current weather information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WeatherInfo'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - OAuth2Implicit: []
+      summary: Get weather information
+      tags:
+      - weather
+  /callback:
+    get:
+      consumes:
+      - application/json
+      description: Handles the OAuth2 callback and exchanges code for token
+      parameters:
+      - description: Authorization code
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State parameter for CSRF protection
+        in: query
+        name: state
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect to protected resource
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: OAuth2 callback handler
+      tags:
+      - auth
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Get server health status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status response
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check endpoint
+      tags:
+      - health
+  /login:
+    get:
+      consumes:
+      - application/json
+      description: Redirects user to the OAuth2 authorization server
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect to authorization server
+          schema:
+            type: string
+      summary: Initiate OAuth2 login flow
+      tags:
+      - auth
+securityDefinitions:
+  OAuth2Implicit:
+    authorizationUrl: http://localhost:8000/oauth/authorize
+    flow: implicit
+    scopes:
+      admin: Grants read and write access
+      read: Grants read access
+      write: Grants write access
+    type: oauth2
+swagger: "2.0"

@@ -1,0 +1,16 @@
+server:
+  port: 8000
+
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  database: identity_server
+  username: postgres
+  password: P@ssw0rd
+
+auth:
+  jwtSecret: "your-super-secret-key-that-should-be-very-long-and-secure"
+
+logging:
+  filePath: ./logs/identity-server.log
