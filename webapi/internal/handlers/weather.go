@@ -26,9 +26,10 @@ func NewWeatherHandler() *WeatherHandler {
 // @Router /api/weather [get]
 func (h *WeatherHandler) GetWeather(c *gin.Context) {
 	// For testing purposes, return mock weather data
-	weather := &models.WeatherResponse{
+	weather := &models.WeatherInfo{
 		Temperature: 25.5,
-		Description: "Sunny",
+		Condition:   "Sunny",
+		Location:    "Test City",
 	}
 
 	c.JSON(http.StatusOK, weather)

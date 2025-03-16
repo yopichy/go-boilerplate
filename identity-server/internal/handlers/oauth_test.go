@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"identity-server/config"
 	"identity-server/internal/models"
 	"net/http"
 	"net/http/httptest"
@@ -10,59 +11,69 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"gorm.io/gorm"
 )
 
-type MockOAuthService struct {
+func setupTestConfig(t *testing.T) *config.Config {
+	cfg, err := config.Load("../../../config/testdata")
+	if err != nil {
+		t.Fatalf("Failed to load test config: %v", err)
+	}
+	return cfg
+}
+
+type MockDB struct {
 	mock.Mock
 }
 
-func (m *MockOAuthService) ValidateClient(clientID, clientSecret string) bool {
-	args := m.Called(clientID, clientSecret)
-	return args.Bool(0)
+func (m *MockDB) Where(query interface{}, args ...interface{}) *gorm.DB {
+	m.Called(query, args)
+	return &gorm.DB{}
 }
 
-func (m *MockOAuthService) GenerateAccessToken(userID string) (*models.Token, error) {
-	args := m.Called(userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.Token), args.Error(1)
+func (m *MockDB) First(dest interface{}, conds ...interface{}) *gorm.DB {
+	m.Called(dest, conds)
+	return &gorm.DB{}
+}
+
+func (m *MockDB) Create(value interface{}) *gorm.DB {
+	m.Called(value)
+	return &gorm.DB{}
 }
 
 func TestOAuthHandler_TokenEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockService := new(MockOAuthService)
-	handler := NewOAuthHandler(mockService)
+	cfg := setupTestConfig(t)
+	mockDB := new(MockDB)
+
+	handler := &OAuthHandler{
+		db: mockDB,
+	}
 
 	t.Run("successful token generation", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
-		// Mock form data
 		c.Request = httptest.NewRequest("POST", "/oauth/token", nil)
 		c.Request.ParseForm()
 		c.Request.Form.Set("grant_type", "client_credentials")
-		c.Request.Form.Set("client_id", "test-client")
-		c.Request.Form.Set("client_secret", "test-secret")
+		c.Request.Form.Set("client_id", cfg.OAuth2.ClientID)
+		c.Request.Form.Set("client_secret", cfg.OAuth2.ClientSecret)
 
-		expectedToken := &models.Token{
-			AccessToken: "test-token",
-			TokenType:   "Bearer",
-			ExpiresIn:   3600,
-		}
+		// Mock client validation
+		mockDB.On("Where", "client_id = ? AND client_secret = ?", cfg.OAuth2.ClientID, cfg.OAuth2.ClientSecret).Return(mockDB)
+		mockDB.On("First", &models.OAuthClient{}, []interface{}{}).Return(nil)
+		mockDB.On("Create", mock.AnythingOfType("*models.OAuthToken")).Return(nil)
 
-		mockService.On("ValidateClient", "test-client", "test-secret").Return(true)
-		mockService.On("GenerateAccessToken", "test-client").Return(expectedToken, nil)
-
-		handler.TokenEndpoint(c)
+		handler.Token(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response models.Token
-		err := json.Unmarshal(w.Body.Bytes(), &response)
+		var response map[string]interface{}
+		err := json.NewDecoder(w.Body).Decode(&response)
 		assert.NoError(t, err)
-		assert.Equal(t, expectedToken.AccessToken, response.AccessToken)
-		mockService.AssertExpectations(t)
+		assert.Contains(t, response, "access_token")
+		assert.Equal(t, "Bearer", response["token_type"])
+		mockDB.AssertExpectations(t)
 	})
 
 	t.Run("invalid client credentials", func(t *testing.T) {
@@ -75,11 +86,13 @@ func TestOAuthHandler_TokenEndpoint(t *testing.T) {
 		c.Request.Form.Set("client_id", "invalid-client")
 		c.Request.Form.Set("client_secret", "invalid-secret")
 
-		mockService.On("ValidateClient", "invalid-client", "invalid-secret").Return(false)
+		// Mock failed client validation
+		mockDB.On("Where", "client_id = ? AND client_secret = ?", "invalid-client", "invalid-secret").Return(mockDB)
+		mockDB.On("First", &models.OAuthClient{}, []interface{}{}).Return(&gorm.DB{Error: gorm.ErrRecordNotFound})
 
-		handler.TokenEndpoint(c)
+		handler.Token(c)
 
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		mockService.AssertExpectations(t)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		mockDB.AssertExpectations(t)
 	})
 }

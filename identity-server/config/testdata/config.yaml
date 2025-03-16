@@ -1,0 +1,16 @@
+server:
+  port: 8000
+
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  database: testdb
+  username: testuser
+  password: testpass
+
+auth:
+  jwtSecret: test-jwt-secret
+
+logging:
+  filePath: ./testdata/test.log

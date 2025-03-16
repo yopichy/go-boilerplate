@@ -1,0 +1,24 @@
+server:
+  port: 8001
+
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  database: testdb
+  username: testuser
+  password: testpass
+
+auth:
+  jwtSecret: test-secret-key
+
+oauth2:
+  authServerURL: http://localhost:8000
+  clientID: test-client
+  clientSecret: test-secret
+  redirectURL: http://localhost:8001/callback
+
+logging:
+  filePath: ./testdata/test.log
+  level: info
+  format: json

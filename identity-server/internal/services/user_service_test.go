@@ -4,9 +4,35 @@ import (
 	"identity-server/internal/models"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+type TestUser struct {
+	ID           string
+	Username     string
+	Email        string
+	PasswordHash string
+}
+
+func loadTestUser(t *testing.T) TestUser {
+	viper.Reset()
+	viper.SetConfigName("user")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("../models/testdata")
+
+	if err := viper.ReadInConfig(); err != nil {
+		t.Fatalf("Failed to load test user data: %v", err)
+	}
+
+	return TestUser{
+		ID:           viper.GetString("users.test_user.id"),
+		Username:     viper.GetString("users.test_user.username"),
+		Email:        viper.GetString("users.test_user.email"),
+		PasswordHash: viper.GetString("users.test_user.password_hash"),
+	}
+}
 
 // MockUserRepository is a mock for user repository
 type MockUserRepository struct {
@@ -32,17 +58,18 @@ func (m *MockUserRepository) FindByUsername(username string) (*models.User, erro
 func TestUserService_GetUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	service := NewUserService(mockRepo)
+	testUser := loadTestUser(t)
 
 	t.Run("successful get user", func(t *testing.T) {
 		expectedUser := &models.User{
-			ID:       "1",
-			Username: "testuser",
-			Email:    "test@example.com",
+			ID:       testUser.ID,
+			Username: testUser.Username,
+			Email:    testUser.Email,
 		}
 
-		mockRepo.On("FindByID", "1").Return(expectedUser, nil)
+		mockRepo.On("FindByID", testUser.ID).Return(expectedUser, nil)
 
-		user, err := service.GetUser("1")
+		user, err := service.GetUser(testUser.ID)
 
 		assert.NoError(t, err)
 		assert.Equal(t, expectedUser, user)
@@ -64,24 +91,25 @@ func TestUserService_GetUser(t *testing.T) {
 func TestUserService_ValidateCredentials(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	service := NewUserService(mockRepo)
+	testUser := loadTestUser(t)
 
 	t.Run("valid credentials", func(t *testing.T) {
 		user := &models.User{
-			Username: "testuser",
-			Password: "$2a$10$somehashedpassword", // Assume this is a properly hashed password
+			Username: testUser.Username,
+			Password: testUser.PasswordHash,
 		}
 
-		mockRepo.On("FindByUsername", "testuser").Return(user, nil)
+		mockRepo.On("FindByUsername", testUser.Username).Return(user, nil)
 
-		isValid := service.ValidateCredentials("testuser", "correctpassword")
+		isValid := service.ValidateCredentials(testUser.Username, "correctpassword")
 		assert.True(t, isValid)
 		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("invalid credentials", func(t *testing.T) {
-		mockRepo.On("FindByUsername", "testuser").Return(nil, models.ErrUserNotFound)
+		mockRepo.On("FindByUsername", testUser.Username).Return(nil, models.ErrUserNotFound)
 
-		isValid := service.ValidateCredentials("testuser", "wrongpassword")
+		isValid := service.ValidateCredentials(testUser.Username, "wrongpassword")
 		assert.False(t, isValid)
 		mockRepo.AssertExpectations(t)
 	})

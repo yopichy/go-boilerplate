@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAuthMiddleware(t *testing.T) {
+func TestOAuth2Authentication(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_ = testutil.SetupTestConfig(t)
+	cfg := testutil.SetupTestConfig(t)
 
-	t.Run("no token provided", func(t *testing.T) {
+	t.Run("missing token", func(t *testing.T) {
 		router := gin.New()
-		router.Use(AuthMiddleware())
+		router.Use(OAuth2Authentication(cfg.OAuth2))
 		router.GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})
@@ -28,9 +28,25 @@ func TestAuthMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 
-	t.Run("valid token provided", func(t *testing.T) {
+	t.Run("valid token in header", func(t *testing.T) {
 		router := gin.New()
-		router.Use(AuthMiddleware())
+		router.Use(OAuth2Authentication(cfg.OAuth2))
+		router.GET("/test", func(c *gin.Context) {
+			c.Status(http.StatusOK)
+		})
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/test", nil)
+		req.Header.Set("Authorization", "Bearer test-token")
+
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("valid token in cookie", func(t *testing.T) {
+		router := gin.New()
+		router.Use(OAuth2Authentication(cfg.OAuth2))
 		router.GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})

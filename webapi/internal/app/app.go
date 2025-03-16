@@ -42,9 +42,9 @@ func (a *App) setupDatabase() {
 }
 
 func (a *App) setupMiddleware() {
-	a.router.Use(middleware.Authentication(a.config.Auth))
+	a.router.Use(middleware.AuthMiddleware())
 	a.router.Use(middleware.Tenancy())
-	a.router.Use(middleware.Localization())
+	a.router.Use(middleware.LocalizationMiddleware())
 	a.router.Use(middleware.ErrorHandler(a.logger))
 }
 

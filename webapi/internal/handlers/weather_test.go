@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"webapi/internal/models"
+	"webapi/internal/testutil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -13,6 +14,7 @@ import (
 
 func TestWeatherHandler_GetWeather(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	testWeather := testutil.LoadTestWeatherData(t)
 
 	t.Run("successful weather fetch", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -24,10 +26,11 @@ func TestWeatherHandler_GetWeather(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response models.WeatherResponse
+		var response models.WeatherInfo
 		err := json.NewDecoder(w.Body).Decode(&response)
 		assert.NoError(t, err)
-		assert.NotZero(t, response.Temperature)
-		assert.NotEmpty(t, response.Description)
+		assert.Equal(t, testWeather.Temperature, response.Temperature)
+		assert.Equal(t, testWeather.Condition, response.Condition)
+		assert.Equal(t, testWeather.Location, response.Location)
 	})
 }

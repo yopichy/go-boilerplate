@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"webapi/config"
@@ -17,8 +16,6 @@ func OAuth2Authentication(cfg config.OAuth2Config) gin.HandlerFunc {
 			return
 		}
 
-		fmt.Printf("Debug - Found token: %s\n", token) // Add debug logging
-
 		// Add token to request header if not present
 		if c.GetHeader("Authorization") == "" {
 			c.Request.Header.Set("Authorization", "Bearer "+token)
@@ -29,25 +26,21 @@ func OAuth2Authentication(cfg config.OAuth2Config) gin.HandlerFunc {
 }
 
 func extractTokenFromMultipleSources(c *gin.Context) string {
-	// Check fragment/hash for access_token (Swagger UI implicit flow)
-	referer := c.GetHeader("Referer")
-	if strings.Contains(referer, "access_token=") {
-		parts := strings.Split(referer, "access_token=")
-		if len(parts) > 1 {
-			token := strings.Split(parts[1], "&")[0]
-			return token
+	// Try Authorization header first
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" {
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			return strings.TrimPrefix(authHeader, "Bearer ")
 		}
+		return authHeader
 	}
 
-	// Check Authorization header
-	if auth := c.GetHeader("Authorization"); auth != "" {
-		parts := strings.Split(auth, " ")
-		if len(parts) == 2 && parts[0] == "Bearer" {
-			return parts[1]
-		}
+	// Try cookie
+	if cookie, err := c.Cookie("access_token"); err == nil && cookie != "" {
+		return cookie
 	}
 
-	// Check query parameter
+	// Try query parameter
 	if token := c.Query("access_token"); token != "" {
 		return token
 	}

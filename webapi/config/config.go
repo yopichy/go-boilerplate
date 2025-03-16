@@ -9,6 +9,7 @@ type Config struct {
 	Database DatabaseConfig
 	Auth     AuthConfig
 	OAuth2   OAuth2Config
+	Logging  LoggingConfig
 }
 
 type ServerConfig struct {
@@ -35,10 +36,23 @@ type OAuth2Config struct {
 	RedirectURL   string
 }
 
-func Load() (*Config, error) {
+type LoggingConfig struct {
+	FilePath string
+	Level    string
+	Format   string
+}
+
+func Load(paths ...string) (*Config, error) {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
+
+	if len(paths) > 0 {
+		for _, path := range paths {
+			viper.AddConfigPath(path)
+		}
+	} else {
+		viper.AddConfigPath(".")
+	}
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err

@@ -1,0 +1,4 @@
+weather:
+  temperature: 25.5
+  description: "Sunny"
+  location: "Test City"

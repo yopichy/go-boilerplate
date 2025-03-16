@@ -1,0 +1,6 @@
+users:
+  test_user:
+    id: "1"
+    username: "testuser"
+    email: "test@example.com"
+    password_hash: "$2a$10$somehashedpassword"
