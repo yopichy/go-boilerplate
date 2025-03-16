@@ -5,20 +5,24 @@ import (
 	"encoding/base64"
 	"fmt"
 	"identity-server/internal/models"
+	"identity-server/internal/services"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type OAuthHandler struct {
-	db *gorm.DB
+	db          *gorm.DB
+	userService *services.UserService
 }
 
 func NewOAuthHandler(db *gorm.DB) *OAuthHandler {
-	return &OAuthHandler{db: db}
+	return &OAuthHandler{
+		db:          db,
+		userService: services.NewUserService(db),
+	}
 }
 
 // Authorize godoc
@@ -109,15 +113,10 @@ func (h *OAuthHandler) Token(c *gin.Context) {
 		username := c.PostForm("username")
 		password := c.PostForm("password")
 
-		// Validate user credentials
-		var user models.User
-		if err := h.db.Where("username = ?", username).First(&user).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_grant"})
-			return
-		}
-
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_grant"})
+		// Use UserService for authentication
+		user, err := h.userService.AuthenticateUser(username, password)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_grant", "description": err.Error()})
 			return
 		}
 
@@ -132,7 +131,7 @@ func (h *OAuthHandler) Token(c *gin.Context) {
 			RefreshToken: refreshToken,
 			UserID:       user.ID,
 			ClientID:     clientID,
-			Scope:        "read write",
+			Scope:        user.Roles, // Use user roles as scope
 		}
 		h.db.Create(&token)
 
@@ -141,6 +140,7 @@ func (h *OAuthHandler) Token(c *gin.Context) {
 			"token_type":    "Bearer",
 			"expires_in":    3600,
 			"refresh_token": refreshToken,
+			"scope":         user.Roles,
 		})
 
 	case "authorization_code":

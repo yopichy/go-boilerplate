@@ -25,10 +25,10 @@ func NewWeatherHandler() *WeatherHandler {
 // @Failure 500 {object} map[string]string "Internal Server Error"
 // @Router /api/weather [get]
 func (h *WeatherHandler) GetWeather(c *gin.Context) {
-	weather := models.WeatherInfo{
-		Temperature: 25,
-		Condition:   "Sunny",
-		Location:    "New York",
+	// For testing purposes, return mock weather data
+	weather := &models.WeatherResponse{
+		Temperature: 25.5,
+		Description: "Sunny",
 	}
 
 	c.JSON(http.StatusOK, weather)

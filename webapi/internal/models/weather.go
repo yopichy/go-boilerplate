@@ -5,3 +5,8 @@ type WeatherInfo struct {
 	Condition   string  `json:"condition"`
 	Location    string  `json:"location"`
 }
+
+type WeatherResponse struct {
+	Temperature float64 `json:"temperature"`
+	Description string  `json:"description"`
+}
